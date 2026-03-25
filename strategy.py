@@ -29,7 +29,7 @@ import pandas as pd
 
 # ── Accumulation / Consolidation Detection ──────────────────────────────────
 CONSOLIDATION_DAYS    = 20    # lookback window to measure the accumulation zone
-CONSOLIDATION_TIGHTNESS = 0.08  # max range_pct to qualify as "tight" (8% of price)
+CONSOLIDATION_TIGHTNESS = 0.05  # max range_pct to qualify as "tight" (8% of price)
 
 # ── Breakout Entry ───────────────────────────────────────────────────────────
 BREAKOUT_LOOKBACK     = 20    # N-day high used to define resistance level
