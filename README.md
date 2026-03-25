@@ -1,91 +1,72 @@
-# autoresearch
+# quant-research
 
 ![teaser](progress.png)
 
-*One day, frontier AI research used to be done by meat computers in between eating, sleeping, having other fun, and synchronizing once in a while using sound wave interconnect in the ritual of "group meeting". That era is long gone. Research is now entirely the domain of autonomous swarms of AI agents running across compute cluster megastructures in the skies. The agents claim that we are now in the 10,205th generation of the code base, in any case no one could tell if that's right or wrong as the "code" is now a self-modifying binary that has grown beyond human comprehension. This repo is the story of how it all began. -@karpathy, March 2026*.
+自主量化交易研究框架（Taiwan Stock Breakout Strategy Research）。
 
-The idea: give an AI agent a small but real LLM training setup and let it experiment autonomously overnight. It modifies the code, trains for 5 minutes, checks if the result improved, keeps or discards, and repeats. You wake up in the morning to a log of experiments and (hopefully) a better model. The training code here is a simplified single-GPU implementation of [nanochat](https://github.com/karpathy/nanochat). The core idea is that you're not touching any of the Python files like you normally would as a researcher. Instead, you are programming the `program.md` Markdown files that provide context to the AI agents and set up your autonomous research org. The default `program.md` in this repo is intentionally kept as a bare bones baseline, though it's obvious how one would iterate on it over time to find the "research org code" that achieves the fastest research progress, how you'd add more agents to the mix, etc. A bit more context on this project is here in this [tweet](https://x.com/karpathy/status/2029701092347630069) and [this tweet](https://x.com/karpathy/status/2031135152349524125).
+AI Agent 全自主運行實驗循環：修改策略參數 → 執行回測 → 記錄結果 → 保留進步 → 丟棄退步。  
+你醒來時，Agent 已跑完數十次實驗，留下最優的籌碼積累突破策略。
 
-## How it works
+## 核心理念
 
-The repo is deliberately kept small and only really has three files that matter:
+- **策略方向**：籌碼積累（Accumulation）後的價格突破做多
+- **資金管理**：極度重視「回撤控制」與「下行風險保護」
+- **優化目標**：`composite_score = Sortino × (1 - Max_Drawdown)` — 越高越好
+- **交易宇宙**：台股 200 支標的，日線 OHLCV 資料
 
-- **`prepare.py`** — fixed constants, one-time data prep (downloads training data, trains a BPE tokenizer), and runtime utilities (dataloader, evaluation). Not modified.
-- **`train.py`** — the single file the agent edits. Contains the full GPT model, optimizer (Muon + AdamW), and training loop. Everything is fair game: architecture, hyperparameters, optimizer, batch size, etc. **This file is edited and iterated on by the agent**.
-- **`program.md`** — baseline instructions for one agent. Point your agent here and let it go. **This file is edited and iterated on by the human**.
+## 快速開始
 
-By design, training runs for a **fixed 5-minute time budget** (wall clock, excluding startup/compilation), regardless of the details of your compute. The metric is **val_bpb** (validation bits per byte) — lower is better, and vocab-size-independent so architectural changes are fairly compared.
-
-If you are new to neural networks, this ["Dummy's Guide"](https://x.com/hooeem/status/2030720614752039185) looks pretty good for a lot more context.
-
-## Quick start
-
-**Requirements:** A single NVIDIA GPU (tested on H100), Python 3.10+, [uv](https://docs.astral.sh/uv/).
+**需求**：Python 3.10+，[uv](https://docs.astral.sh/uv/)，無需 GPU。
 
 ```bash
-
-# 1. Install uv project manager (if you don't already have it)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2. Install dependencies
+# 1. 安裝依賴
 uv sync
 
-# 3. Download data and train tokenizer (one-time, ~2 min)
-uv run prepare.py
-
-# 4. Manually run a single training experiment (~5 min)
-uv run train.py
+# 2. 執行基準回測（確認環境）
+uv run strategy.py
 ```
 
-If the above commands all work ok, your setup is working and you can go into autonomous research mode.
+## 啟動 Agent
 
-## Running the agent
-
-Simply spin up your Claude/Codex or whatever you want in this repo (and disable all permissions), then you can prompt something like:
+在本目錄中開啟你的 AI Agent（Claude / Gemini），然後輸入：
 
 ```
-Hi have a look at program.md and let's kick off a new experiment! let's do the setup first.
+請閱讀 program.md，協助我啟動一個新的量化研究實驗循環。
 ```
 
-The `program.md` file is essentially a super lightweight "skill".
+Agent 會：
+1. 提議一個實驗分支名稱（如 `autoresearch/mar25`）
+2. 建立分支並閱讀策略文件
+3. 執行基準回測，記錄 baseline
+4. 自主開始修改策略參數、評估結果、循環實驗
 
-## Project structure
+## 檔案架構
 
 ```
-prepare.py      — constants, data prep + runtime utilities (do not modify)
-train.py        — model, optimizer, training loop (agent modifies this)
-program.md      — agent instructions
-pyproject.toml  — dependencies
+strategy.py   — Agent 唯一可修改的檔案（策略參數 + 進場訊號邏輯）
+prepare.py    — 固定回測引擎（DO NOT MODIFY）
+program.md    — Agent 研究指引
+results.tsv   — 實驗結果記錄
+data/*.csv    — 200 支台股日線 OHLCV（2024 年至今）
 ```
 
-## Design choices
+## 設計原則
 
-- **Single file to modify.** The agent only touches `train.py`. This keeps the scope manageable and diffs reviewable.
-- **Fixed time budget.** Training always runs for exactly 5 minutes, regardless of your specific platform. This means you can expect approx 12 experiments/hour and approx 100 experiments while you sleep. There are two upsides of this design decision. First, this makes experiments directly comparable regardless of what the agent changes (model size, batch size, architecture, etc). Second, this means that autoresearch will find the most optimal model for your platform in that time budget. The downside is that your runs (and results) become not comparable to other people running on other compute platforms.
-- **Self-contained.** No external dependencies beyond PyTorch and a few small packages. No distributed training, no complex configs. One GPU, one file, one metric.
+- **唯一可修改檔案**：Agent 只碰 `strategy.py`，評估函數固定不動，結果可信
+- **嚴格反前視偏差**：訊號在 T 日收盤計算，T+1 日開盤執行
+- **真實交易成本**：買 0.1425% + 賣 0.1425% + 證交稅 0.3%（合計 ~0.585%）
+- **樣本外驗證**：優化以樣本內為輔助，主指標取 out-of-sample composite
 
-## Platform support
+## 評估指標
 
-This code currently requires that you have a single NVIDIA GPU. In principle it is quite possible to support CPU, MPS and other platforms but this would also bloat the code. I'm not 100% sure that I want to take this on personally right now. People can reference (or have their agents reference) the full/parent nanochat repository that has wider platform support and shows the various solutions (e.g. a Flash Attention 3 kernels fallback implementation, generic device support, autodetection, etc.), feel free to create forks or discussions for other platforms and I'm happy to link to them here in the README in some new notable forks section or etc.
-
-Seeing as there seems to be a lot of interest in tinkering with autoresearch on much smaller compute platforms than an H100, a few extra words. If you're going to try running autoresearch on smaller computers (Macbooks etc.), I'd recommend one of the forks below. On top of this, here are some recommendations for how to tune the defaults for much smaller models for aspiring forks:
-
-1. To get half-decent results I'd use a dataset with a lot less entropy, e.g. this [TinyStories dataset](https://huggingface.co/datasets/karpathy/tinystories-gpt4-clean). These are GPT-4 generated short stories. Because the data is a lot narrower in scope, you will see reasonable results with a lot smaller models (if you try to sample from them after training).
-2. You might experiment with decreasing `vocab_size`, e.g. from 8192 down to 4096, 2048, 1024, or even - simply byte-level tokenizer with 256 possibly bytes after utf-8 encoding.
-3. In `prepare.py`, you'll want to lower `MAX_SEQ_LEN` a lot, depending on the computer even down to 256 etc. As you lower `MAX_SEQ_LEN`, you may want to experiment with increasing `DEVICE_BATCH_SIZE` in `train.py` slightly to compensate. The number of tokens per fwd/bwd pass is the product of these two.
-4. Also in `prepare.py`, you'll want to decrease `EVAL_TOKENS` so that your validation loss is evaluated on a lot less data.
-5. In `train.py`, the primary single knob that controls model complexity is the `DEPTH` (default 8, here). A lot of variables are just functions of this, so e.g. lower it down to e.g. 4.
-6. You'll want to most likely use `WINDOW_PATTERN` of just "L", because "SSSL" uses alternating banded attention pattern that may be very inefficient for you. Try it.
-7. You'll want to lower `TOTAL_BATCH_SIZE` a lot, but keep it powers of 2, e.g. down to `2**14` (~16K) or so even, hard to tell.
-
-I think these would be the reasonable hyperparameters to play with. Ask your favorite coding agent for help and copy paste them this guide, as well as the full source code.
-
-## Notable forks
-
-- [miolini/autoresearch-macos](https://github.com/miolini/autoresearch-macos) (MacOS)
-- [trevin-creator/autoresearch-mlx](https://github.com/trevin-creator/autoresearch-mlx) (MacOS)
-- [jsegov/autoresearch-win-rtx](https://github.com/jsegov/autoresearch-win-rtx) (Windows)
-- [andyluo7/autoresearch](https://github.com/andyluo7/autoresearch) (AMD)
+| 指標 | 說明 |
+|------|------|
+| **composite_score** | `Sortino × (1 - MDD)`，主要優化目標 |
+| sortino | 年化 Sortino Ratio（下行偏差標準化超額收益） |
+| max_drawdown | 最大回撤（越小越好） |
+| win_rate | 獲利交易佔比 |
+| profit_factor | 總獲利 / 總虧損 |
+| annual_return | 年化報酬率 |
 
 ## License
 
