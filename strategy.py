@@ -42,7 +42,7 @@ REQUIRE_ABOVE_MA60    = False # extra trend filter: only trade above 60d MA
 ATR_PERIOD            = 14    # ATR calculation period (Wilder EMA)
 STOP_LOSS_ATR         = 2.5   # initial stop = entry_price - N × ATR
 TRAILING_STOP_ATR     = 2.0   # trailing stop = peak_price - N × ATR
-MAX_HOLD_DAYS         = 30    # close position after N trading days regardless
+MAX_HOLD_DAYS         = 15    # close position after N trading days regardless
 
 # ── Portfolio / Universe Filters ─────────────────────────────────────────────
 MAX_POSITIONS         = 5     # max concurrent long positions
