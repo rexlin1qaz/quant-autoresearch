@@ -34,7 +34,7 @@ CONSOLIDATION_TIGHTNESS = 0.05  # max range_pct to qualify as "tight" (8% of pri
 # ── Breakout Entry ───────────────────────────────────────────────────────────
 BREAKOUT_LOOKBACK     = 20    # N-day high used to define resistance level
 VOLUME_LOOKBACK       = 20    # rolling window for average volume baseline
-VOLUME_SURGE_RATIO    = 1.5   # entry requires today's volume > N × 20d avg
+VOLUME_SURGE_RATIO    = 2.0   # entry requires today's volume > N × 20d avg
 REQUIRE_ABOVE_MA20    = True  # extra trend filter: only trade above 20d MA
 REQUIRE_ABOVE_MA60    = False # extra trend filter: only trade above 60d MA
 
